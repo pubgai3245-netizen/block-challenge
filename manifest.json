@@ -1,0 +1,22 @@
+{
+  "name": "Block Challenge",
+  "short_name": "Block Challenge",
+  "description": "ব্লক বসিয়ে সারি পরিষ্কার করার মজার গেম!",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#101a49",
+  "theme_color": "#101a49",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
