@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Block Challenge</title>
+
+  <!-- ✅ PWA মেটা ট্যাগ -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#101a49">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Block Challenge">
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      font-family: Arial, sans-serif;
+      color: white;
+      background: linear-gradient(160deg, #101a49, #241044);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .game {
+      width: min(100%, 480px);
+      padding: 20px 14px 30px;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 4px 0 12px;
+      font-size: 29px;
+      color: #ffe56b;
+    }
+
+    .scores {
+      display: flex;
+      justify-content: center;
+      gap: 36px;
+      margin-bottom: 14px;
+    }
+
+    .scores div {
+      background: #ffffff17;
+      border-radius: 12px;
+      padding: 8px 20px;
+      min-width: 100px;
+    }
+
+    .scores span {
+      display: block;
+      font-size: 12px;
+      color: #c4c8eb;
+    }
+
+    .scores strong {
+      font-size: 24px;
+    }
+
+    #message {
+      min-height: 24px;
+      color: #d8dcff;
+      font-size: 14px;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 3px;
+      width: 100%;
+      aspect-ratio: 1;
+      padding: 7px;
+      background: #0a1030;
+      border: 3px solid #485495;
+      border-radius: 12px;
+      touch-action: manipulation;
+    }
+
+    .cell {
+      min-width: 0;
+      min-height: 0;
+      border-radius: 4px;
+      background: #26325d;
+    }
+
+    .cell.filled {
+      box-shadow: inset 0 0 0 2px #ffffff40;
+    }
+
+    #pieces {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 18px;
+      min-height: 105px;
+    }
+
+    .piece-slot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 105px;
+      border: 2px solid transparent;
+      border-radius: 12px;
+      background: #ffffff0b;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .piece-slot.selected {
+      border-color: #ffe56b;
+      background: #ffffff1b;
+    }
+
+    .piece-slot.empty {
+      cursor: default;
+      opacity: 0.4;
+    }
+
+    .shape {
+      display: grid;
+      gap: 2px;
+      pointer-events: none;
+    }
+
+    .mini-cell {
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+    }
+
+    .mini-cell.visible {
+      box-shadow: inset 0 0 0 2px #ffffff40;
+    }
+
+    #ghost {
+      position: fixed;
+      z-index: 10;
+      pointer-events: none;
+      opacity: 0.8;
+      display: none;
+      transform: translate(-50%, -50%);
+    }
+
+    button {
+      margin-top: 18px;
+      border: none;
+      border-radius: 10px;
+      padding: 11px 24px;
+      background: #ffe56b;
+      color: #202044;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .hint {
+      color: #b8bddd;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    /* ✅ ইনস্টল ব্যানার */
+    #install-banner {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #1b2560;
+      border-top: 2px solid #ffe56b;
+      padding: 14px;
+      text-align: center;
+      display: none;
+      z-index: 20;
+    }
+
+    #install-banner p {
+      margin: 0 0 10px;
+      color: #fff;
+      font-size: 14px;
+    }
+
+    #install-banner .btn-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    #install-banner button {
+      margin-top: 0;
+      padding: 10px 20px;
+      font-size: 14px;
+    }
+
+    #install-banner .close-btn {
+      background: #ffffff30;
+      color: #fff;
+    }
+
+    /* ✅ ইনস্টল বাটন (হেডারে) */
+    #install-btn {
+      margin-top: 8px;
+      padding: 8px 18px;
+      font-size: 14px;
+      background: #46d5b2;
+      color: #101a49;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="game">
+    <h1>🧩 Block Challenge</h1>
+
+    <!-- ✅ ইনস্টল বাটন -->
+    <button id="install-btn">📥 অ্যাপ ইনস্টল করো</button>
+
+    <div class="scores">
+      <div><span>স্কোর</span><strong id="score">0</strong></div>
+      <div><span>সেরা স্কোর</span><strong id="best">0</strong></div>
+    </div>
+
+    <div id="message">একটি ব্লক বেছে বোর্ডে বসাও!</div>
+    <div id="board" aria-label="গেম বোর্ড"></div>
+    <div id="pieces"></div>
+
+    <button id="restart">নতুন গেম</button>
+    <p class="hint">
+      ব্লক টেনে বোর্ডে ছাড়ো, অথবা ব্লক সিলেক্ট করে বোর্ডে ট্যাপ করো।
+      পুরো সারি বা কলাম ভরলে তা পরিষ্কার হবে।
+    </p>
+  </main>
+
+  <!-- ✅ ইনস্টল ব্যানার -->
+  <div id="install-banner">
+    <p>📲 <strong>Block Challenge</strong> অ্যাপ হিসেবে ইনস্টল করো!</p>
+    <div class="btn-group">
+      <button id="install-accept">ইনস্টল করো</button>
+      <button id="install-dismiss" class="close-btn">পরে</button>
+    </div>
+  </div>
+
+  <div id="ghost"></div>
+
+  <script>
+    // ══════════════════════════════════
+    //  ✅ PWA Service Worker রেজিস্ট্রেশন
+    // ══════════════════════════════════
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js").then(reg => {
+        console.log("Service Worker registered:", reg);
+      }).catch(err => {
+        console.log("Service Worker registration failed:", err);
+      });
+    }
+
+    // ══════════════════════════════════
+    //  ✅ ইনস্টল ব্যানার লজিক
+    // ══════════════════════════════════
+    let deferredPrompt;
+    const installBanner = document.getElementById("install-banner");
+    const installBtn = document.getElementById("install-btn");
+
+    window.addEventListener("beforeinstallprompt", event => {
+      event.preventDefault();
+      deferredPrompt = event;
+      installBtn.style.display = "inline-block";
+      installBanner.style.display = "block";
+    });
+
+    async function promptInstall() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      console.log("Install choice:", choice.outcome);
+      deferredPrompt = null;
+      installBanner.style.display = "none";
+      installBtn.style.display = "none";
+    }
+
+    document.getElementById("install-accept").addEventListener("click", promptInstall);
+    installBtn.addEventListener("click", promptInstall);
+    document.getElementById("install-dismiss").addEventListener("click", () => {
+      installBanner.style.display = "none";
+    });
+
+    // ══════════════════════════════════
+    //  🎮 গেম লজিক
+    // ══════════════════════════════════
+    const SIZE = 8;
+    const COLORS = [
+      "#ff596f", "#ffad42", "#46d5b2",
+      "#50a7ff", "#be79ff", "#f27dc3"
+    ];
+
+    const SHAPES = [
+      [[0,0]],
+      [[0,0], [0,1]],
+      [[0,0], [1,0]],
+      [[0,0], [0,1], [0,2]],
+      [[0,0], [1,0], [2,0]],
+      [[0,0], [0,1], [1,0], [1,1]],
+      [[0,0], [0,1], [0,2], [0,3]],
+      [[0,0], [1,0], [2,0], [3,0]],
+      [[0,0], [1,0], [1,1]],
+      [[0,1], [1,0], [1,1]],
+      [[0,0], [0,1], [1,0]],
+      [[0,0], [0,1], [1,1]],
+      [[0,0], [1,0], [2,0], [2,1]],
+      [[0,1], [1,1], [2,0], [2,1]],
+      [[0,0], [0,1], [0,2], [1,1]],
+      [[0,1], [1,0], [1,1], [1,2]]
+    ];
+
+    const boardEl = document.getElementById("board");
+    const piecesEl = document.getElementById("pieces");
+    const scoreEl = document.getElementById("score");
+    const bestEl = document.getElementById("best");
+    const messageEl = document.getElementById("message");
+    const ghost = document.getElementById("ghost");
+
+    let board;
+    let pieces;
+    let selected;
+    let score;
+    let best = 0;
+    let gameOver;
+
+    try {
+      best = Number(localStorage.getItem("blockBest")) || 0;
+    } catch (e) {}
+
+    function randomItem(array) {
+      return array[Math.floor(Math.random() * array.length)];
+    }
+
+    function newPiece() {
+      return {
+        cells: randomItem(SHAPES),
+        color: randomItem(COLORS)
+      };
+    }
+
+    function startGame() {
+      board = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+      pieces = [newPiece(), newPiece(), newPiece()];
+      selected = null;
+      score = 0;
+      gameOver = false;
+      messageEl.textContent = "একটি ব্লক বেছে বোর্ডে বসাও!";
+      render();
+    }
+
+    function render() {
+      scoreEl.textContent = score;
+      bestEl.textContent = best;
+      renderBoard();
+      renderPieces();
+    }
+
+    function renderBoard() {
+      boardEl.innerHTML = "";
+
+      for (let row = 0; row < SIZE; row++) {
+        for (let col = 0; col < SIZE; col++) {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.dataset.row = row;
+          cell.dataset.col = col;
+
+          if (board[row][col]) {
+            cell.classList.add("filled");
+            cell.style.background = board[row][col];
+          }
+
+          cell.addEventListener("click", () => {
+            if (selected !== null) placePiece(selected, row, col);
+          });
+
+          boardEl.appendChild(cell);
+        }
+      }
+    }
+
+    function makeShape(piece, cellSize = 20) {
+      const shape = document.createElement("div");
+      shape.className = "shape";
+
+      const rows = Math.max(...piece.cells.map(p => p[0])) + 1;
+      const cols = Math.max(...piece.cells.map(p => p[1])) + 1;
+
+      shape.style.gridTemplateColumns = `repeat(${cols}, ${cellSize}px)`;
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const mini = document.createElement("div");
+          mini.className = "mini-cell";
+          mini.style.width = cellSize + "px";
+          mini.style.height = cellSize + "px";
+
+          if (piece.cells.some(([r, c]) => r === row && c === col)) {
+            mini.classList.add("visible");
+            mini.style.background = piece.color;
+          }
+
+          shape.appendChild(mini);
+        }
+      }
+
+      return shape;
+    }
+
+    function renderPieces() {
+      piecesEl.innerHTML = "";
+
+      pieces.forEach((piece, index) => {
+        const slot = document.createElement("div");
+        slot.className = "piece-slot";
+
+        if (!piece) {
+          slot.classList.add("empty");
+          piecesEl.appendChild(slot);
+          return;
+        }
+
+        if (selected === index) slot.classList.add("selected");
+        slot.appendChild(makeShape(piece));
+        setupDrag(slot, index);
+        piecesEl.appendChild(slot);
+      });
+    }
+
+    function setupDrag(slot, index) {
+      let startX = 0;
+      let startY = 0;
+      let dragging = false;
+
+      slot.addEventListener("pointerdown", event => {
+        if (gameOver || !pieces[index]) return;
+
+        event.preventDefault();
+        selected = index;
+        startX = event.clientX;
+        startY = event.clientY;
+        dragging = false;
+
+        document.querySelectorAll(".piece-slot").forEach((el, i) => {
+          el.classList.toggle("selected", i === index);
+        });
+
+        slot.setPointerCapture(event.pointerId);
+      });
+
+      slot.addEventListener("pointermove", event => {
+        if (!slot.hasPointerCapture(event.pointerId)) return;
+
+        const distance = Math.hypot(
+          event.clientX - startX,
+          event.clientY - startY
+        );
+
+        if (distance > 8 && !dragging) {
+          dragging = true;
+          ghost.innerHTML = "";
+          ghost.appendChild(makeShape(pieces[index], 24));
+          ghost.style.display = "block";
+        }
+
+        if (dragging) {
+          ghost.style.left = event.clientX + "px";
+          ghost.style.top = event.clientY + "px";
+        }
+      });
+
+      slot.addEventListener("pointerup", event => {
+        ghost.style.display = "none";
+
+        if (!dragging) return;
+
+        const target = document.elementFromPoint(event.clientX, event.clientY);
+        const cell = target && target.closest(".cell");
+
+        if (cell && boardEl.contains(cell)) {
+          placePiece(index, Number(cell.dataset.row), Number(cell.dataset.col));
+        }
+      });
+
+      slot.addEventListener("pointercancel", () => {
+        ghost.style.display = "none";
+      });
+    }
+
+    function canPlace(piece, row, col) {
+      return piece.cells.every(([dr, dc]) => {
+        const r = row + dr;
+        const c = col + dc;
+        return r >= 0 && r < SIZE && c >= 0 && c < SIZE && !board[r][c];
+      });
+    }
+
+    function hasMove(piece) {
+      for (let row = 0; row < SIZE; row++) {
+        for (let col = 0; col < SIZE; col++) {
+          if (canPlace(piece, row, col)) return true;
+        }
+      }
+      return false;
+    }
+
+    function placePiece(index, row, col) {
+      const piece = pieces[index];
+      if (!piece || gameOver) return;
+
+      if (!canPlace(piece, row, col)) {
+        messageEl.textContent = "এখানে ব্লকটি বসবে না। অন্য জায়গায় চেষ্টা করো!";
+        return;
+      }
+
+      piece.cells.forEach(([dr, dc]) => {
+        board[row + dr][col + dc] = piece.color;
+      });
+
+      score += piece.cells.length;
+      pieces[index] = null;
+      selected = null;
+
+      const fullRows = [];
+      const fullCols = [];
+
+      for (let r = 0; r < SIZE; r++) {
+        if (board[r].every(Boolean)) fullRows.push(r);
+      }
+
+      for (let c = 0; c < SIZE; c++) {
+        if (board.every(row => Boolean(row[c]))) fullCols.push(c);
+      }
+
+      fullRows.forEach(r => {
+        for (let c = 0; c < SIZE; c++) board[r][c] = null;
+      });
+
+      fullCols.forEach(c => {
+        for (let r = 0; r < SIZE; r++) board[r][c] = null;
+      });
+
+      const lines = fullRows.length + fullCols.length;
+      score += lines * 10;
+
+      if (score > best) {
+        best = score;
+        try {
+          localStorage.setItem("blockBest", best);
+        } catch (e) {}
+      }
+
+      if (pieces.every(piece => piece === null)) {
+        pieces = [newPiece(), newPiece(), newPiece()];
+      }
+
+      const available = pieces.filter(Boolean);
+
+      if (!available.some(hasMove)) {
+        gameOver = true;
+        messageEl.textContent = "গেম শেষ! নতুন গেম শুরু করো।";
+      } else if (lines > 0) {
+        messageEl.textContent = `দারুণ! ${lines}টি লাইন পরিষ্কার হয়েছে! 🎉`;
+      } else {
+        messageEl.textContent = "একটি ব্লক বেছে বোর্ডে বসাও!";
+      }
+
+      render();
+    }
+
+    document.getElementById("restart").addEventListener("click", startGame);
+    startGame();
+  </script>
+</body>
+</html>
